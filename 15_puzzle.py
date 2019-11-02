@@ -1,6 +1,6 @@
 import numpy as np
-import copy
-import random
+import copy, random, math
+
 
 class State():
     POSSIBLE_MOVES = [(-1,0),(1,0),(0,-1),(0,1)]
@@ -25,7 +25,7 @@ class State():
         else:
             self.puzzle_locations[y_blank,x_blank] = self.puzzle_locations[y_target,x_target]
             self.puzzle_locations[y_target,x_target] = 0
-    def PossibleNextStates(self):
+    def GetNeighbors(self):
         states = []
         for x,y in self.POSSIBLE_MOVES:
             try:
@@ -35,25 +35,50 @@ class State():
             except Exception:
                 pass
         return states
-    def Shuffle(self,steps=10):
+    def Shuffle(self,steps=100):
         for _ in range(0,steps):
-            x,y = state.POSSIBLE_MOVES[random.randint(0,3)]
+            x,y = State.POSSIBLE_MOVES[random.randint(0,3)]
             try:
                 self.Move(x,y)
             except Exception:
                 pass
+    def Hash(self):
+        count =int(0)
+        sum = int(0)
+        for i in self.puzzle_locations.flatten('C'):
+            sum += i* math.pow(16,count)
+            count +=1
+        return int(sum)
+    def GetHeuristic(self,goal_state):
+        difference_count = 0
+        index = 0
+        flatten_goal = goal_state.puzzle_locations.flatten('C')
+        for n in self.puzzle_locations.flatten('C'):
+            if (n == flatten_goal[index]):
+                n=n+1
+            else:
+                difference_count+=1
+            index+=1
+        return difference_count
+    def __str__(self):
+        return (self.puzzle_locations.__str__())
 
+class SearchAgent:
+    def __init__(self,start_state,goal_state):
+        self.start_state = start_state
+        self.goal_state = goal_state
+    def Start(self):
+        print (self.start_state.GetHeuristic(goal_state))
+        Getneighbors = start_state.GetNeighbors()
+        for neighbor in Getneighbors:
+            print(neighbor)
 
-state = State()
-print(state.puzzle_locations)
-print ('------------------')
+goal_state = State()
+start_state = State()
+start_state.Shuffle(steps = 100)
+print(goal_state)
+print(start_state)
 
-
-
-state.Shuffle(steps = 100)
-print(state.puzzle_locations)
-
-states = state.PossibleNextStates()
-for s in states:
-    print(s.puzzle_locations)
-print ('------------------')
+  
+agent = SearchAgent(start_state,goal_state)
+agent.Start()
