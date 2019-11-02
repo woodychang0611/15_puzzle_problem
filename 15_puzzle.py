@@ -42,7 +42,7 @@ class State():
                 self.Move(x,y)
             except Exception:
                 pass
-    def Hash(self):
+    def GetHash(self):
         count =int(0)
         sum = int(0)
         for i in self.puzzle_locations.flatten('C'):
