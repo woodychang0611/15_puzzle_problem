@@ -5,10 +5,8 @@ from heapq import heappush, heappop
 
 class State():
     POSSIBLE_MOVES = [(-1,0),(1,0),(0,-1),(0,1)]
-
     def __init__ (self):
         self.puzzle_locations = np.array([[1,2,3,4],[12,13,14,5],[11,0,15,6],[10,9,8,7]])
-
     def __eq__(self, other):
             return np.array_equal(self.puzzle_locations,other.puzzle_locations)
     def blank_location(self):
@@ -64,6 +62,8 @@ class State():
                 difference_count+=1
             index+=1
         return difference_count
+    def IsFailed(self):
+        return False
     def __str__(self):
         return (self.puzzle_locations.__str__())
 
@@ -87,7 +87,6 @@ class SearchMode(Enum):
      RBFS=4
 
 class SearchAgent:
-    
     def __init__(self,start_state,goal_check_function,mode:SearchMode):
         self.start_state = start_state
         self.goal_check_function = goal_check_function
@@ -97,14 +96,23 @@ class SearchAgent:
         self.frontiers=[]
         self.mode = mode
         self.max_queue_size = len(self.frontiers)
+        if(self.mode == SearchMode.IDS):
+            self.cut_off_depth =1
     
     def get_evaluate_value(self,node):
+        #use a smaller number so it works like stack
         if(self.mode == SearchMode.IDS):
-            return 0
+            if (len (self.frontiers)==0):
+                return 0
+            else:
+                return min(self.frontiers)[0]-1
+        #f(x) = g(x)
         elif (self.mode == SearchMode.UCS):
             return node.depth
+        #f(x) = h(x)    
         elif (self.mode == SearchMode.BFS):
             return node.value.GetHeuristic()
+        #f(x) = g(x) + h(x)      
         elif (self.mode == SearchMode.A_Star):
             return node.depth+node.value.GetHeuristic()
         elif (self.mode == SearchMode.RBFS):
@@ -115,12 +123,17 @@ class SearchAgent:
         hash = state.GetHash()
         if (hash in self.explored.keys()):
             return None
+        if (state.IsFailed()):
+            return None
         else:
             self.explored[hash] = node
 
         if (self.goal_check_function(state)):
             return node
         else:
+            #For Iterative-Deepening Search, stop adding frontier if the depth reach cut off depth
+            if(self.mode == SearchMode.IDS and node.depth >= self.cut_off_depth):
+                return None
             neighbors = state.GetNeighbors()
             for neighbor in neighbors:
                 new_node = Node(node,neighbor,node.depth+1)
@@ -143,13 +156,19 @@ class SearchAgent:
             if (result != None):
                 print (f"Mode: {self.mode} Solution found!, Max queue size: {self.max_queue_size} Max depth: {node.depth}")
                 return result
+        if(self.mode == SearchMode.IDS):
+            new_cut_off_depth = self.cut_off_depth+1
+            #reset the search agent
+            self = SearchAgent(self.start_state,self.goal_check_function,self.mode)
+            self.cut_off_depth = new_cut_off_depth
+            return self.search()
         print ("Fail!")
         return None
 
 
 goal_state = State()
 start_state =  State()
-start_state.Shuffle(steps = 30)
+start_state.Shuffle(steps = 20)
 print(goal_state)
 print(start_state)
 
@@ -160,4 +179,7 @@ agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.A_Star)
 solution_node = agent.search()
 
 agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.UCS)
+solution_node = agent.search()
+
+agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.IDS)
 solution_node = agent.search()
