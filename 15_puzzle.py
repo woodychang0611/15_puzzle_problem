@@ -94,6 +94,14 @@ class SearchAgent:
         self.mode = mode
     
     def get_evaluate_value(self,node):
+        if (len(self.frontiers)==0):
+            return 0
+        else:
+            return min(self.frontiers)[0]-1
+        if (len(self.frontiers)==0):
+            return 0
+        else:
+            return max(self.frontiers)[0]+1
         return node.depth       
     def process_node(self,Node): 
         pass
@@ -112,18 +120,11 @@ class SearchAgent:
         for neighbor in neighbors:
             node = Node(start_node,neighbor,1)
             self.add_frontier(node)
-        
-
-        print (len(self.frontiers))
         while (len(self.frontiers) > 0):
             node = self.get_next_frontier()
             print('='*80)
             print(node.depth)
             print(node.value)
-
-
-
-
 
 goal_state = State()
 start_state = State()
@@ -131,6 +132,5 @@ start_state.Shuffle(steps = 100)
 print(goal_state)
 print(start_state)
 
-  
 agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.IDS)
-print (agent.start())
+agent.start()
