@@ -1,5 +1,5 @@
 import numpy as np
-import copy, random, math
+import sys, copy, random, math
 from enum import Enum
 from heapq import heappush, heappop
 
@@ -82,7 +82,7 @@ class Node:
 class SearchMode(Enum):
      IDS =0
      UCS=1
-     BFS=2
+     Greedy_BFS=2
      A_Star=3
      RBFS=4
 
@@ -90,14 +90,15 @@ class SearchAgent:
     def __init__(self,start_state,goal_check_function,mode:SearchMode):
         self.start_state = start_state
         self.goal_check_function = goal_check_function
-        #Dictionary
         self.explored={}
-        #Priority Queue
         self.frontiers=[]
         self.mode = mode
         self.max_queue_size = len(self.frontiers)
         if(self.mode == SearchMode.IDS):
             self.cut_off_depth =1
+        if(self.mode == SearchMode.RBFS):
+            self.f_limit = [sys.maxsize]
+            self.alternative_node = [None]
     
     def get_evaluate_value(self,node):
         #use a smaller number so it works like stack
@@ -110,34 +111,51 @@ class SearchAgent:
         elif (self.mode == SearchMode.UCS):
             return node.depth
         #f(x) = h(x)    
-        elif (self.mode == SearchMode.BFS):
+        elif (self.mode == SearchMode.Greedy_BFS):
             return node.value.GetHeuristic()
         #f(x) = g(x) + h(x)      
         elif (self.mode == SearchMode.A_Star):
             return node.depth+node.value.GetHeuristic()
         elif (self.mode == SearchMode.RBFS):
-            return 0    
+            return node.depth+node.value.GetHeuristic()  
         return 0
+
     def process_node(self,node:Node):
         state = node.value
         hash = state.GetHash()
+        if (self.goal_check_function(state)):
+            return node
         if (hash in self.explored.keys()):
             return None
         if (state.IsFailed()):
             return None
-        else:
-            self.explored[hash] = node
-
-        if (self.goal_check_function(state)):
-            return node
-        else:
-            #For Iterative-Deepening Search, stop adding frontier if the depth reach cut off depth
-            if(self.mode == SearchMode.IDS and node.depth >= self.cut_off_depth):
-                return None
+        self.explored[hash] = node
+        if(self.mode == SearchMode.RBFS):
+            print ("RBFS")
             neighbors = state.GetNeighbors()
-            for neighbor in neighbors:
-                new_node = Node(node,neighbor,node.depth+1)
-                self.add_frontier(new_node)
+            child_nodes =[]
+            for n in neighbors:
+                child_node = Node(node,n,node.depth+1)
+                evaluate_value = self.get_evaluate_value(child_node)
+                child_nodes.append((evaluate_value,child_node))
+            child_nodes.sort()
+
+            #get highest
+            next_node = child_nodes[0][1]
+            alternative_node = child_nodes[1][1]
+            print(self.get_evaluate_value(next_node))
+            print(next_node.value)
+            print(self.get_evaluate_value(alternative_node))
+            print(alternative_node.value)            
+            return None
+
+        #For Iterative-Deepening Search, stop adding frontier if the depth reach cut off depth
+        if(self.mode == SearchMode.IDS and node.depth >= self.cut_off_depth):
+            return None
+        neighbors = state.GetNeighbors()
+        for neighbor in neighbors:
+            new_node = Node(node,neighbor,node.depth+1)
+            self.add_frontier(new_node)
         return None
 
     def add_frontier(self,node):
@@ -169,10 +187,17 @@ class SearchAgent:
 goal_state = State()
 start_state =  State()
 start_state.Shuffle(steps = 20)
+print('Goal State')
 print(goal_state)
+print('Start State')
 print(start_state)
 
-agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.BFS)
+
+agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.RBFS)
+solution_node = agent.search()
+exit(0)
+
+agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.Greedy_BFS)
 solution_node = agent.search()
 
 agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.A_Star)
@@ -183,3 +208,4 @@ solution_node = agent.search()
 
 agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.IDS)
 solution_node = agent.search()
+
