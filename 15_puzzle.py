@@ -1,57 +1,73 @@
 import numpy as np
-import sys, copy, random, math
+import sys
+import copy
+import random
+import math
 from enum import Enum
 from heapq import heappush, heappop
 
+ACTIONS={
+        'Up':(0,-1),
+        'Down':(0,1),
+        'Left':(-1,0),
+        'Right':(1,0)
+    }
+
 class State():
-    POSSIBLE_MOVES = [(-1,0),(1,0),(0,-1),(0,1)]
+
     def __init__ (self):
+        self.size =4
         self.puzzle_locations = np.array([[1,2,3,4],[12,13,14,5],[11,0,15,6],[10,9,8,7]])
+        #self.puzzle_locations = np.array([[1,2,3],[4,5,6],[7,8,0]])
     def __eq__(self, other):
             return np.array_equal(self.puzzle_locations,other.puzzle_locations)
     def blank_location(self):
         x_blank = -1
         y_blank = -1
-        for i in range(4,):
+        for i in range(self.size,):
             if (0 in self.puzzle_locations[i,:]):
                 y_blank =  i
             if (0 in self.puzzle_locations[:,i]):
                 x_blank =  i
         return x_blank,y_blank
-    def Move(self,x,y):
+    def move(self,action):
+        shape = list(self.puzzle_locations.shape)
+        x_size = shape[1]
+        y_size = shape[0]
+        x,y = ACTIONS[action]
         x_blank,y_blank = self.blank_location()
         x_target = x_blank + x
         y_target = y_blank + y
-        if(x_target <0 or x_target >3 or y_target <0 or y_target>3):
+        if(x_target <0 or x_target > self.size -1 or y_target <0 or y_target> self.size-1):
             raise Exception()
         else:
             self.puzzle_locations[y_blank,x_blank] = self.puzzle_locations[y_target,x_target]
             self.puzzle_locations[y_target,x_target] = 0
-    def GetNeighbors(self):
+    def get_neighbors(self):
         states = []
-        for x,y in self.POSSIBLE_MOVES:
+        for action in ACTIONS:
             try:
                 new_state = copy.deepcopy(self)
-                new_state.Move(x,y)
+                new_state.move(action)
                 states.append(new_state)
             except Exception:
                 pass
         return states
-    def Shuffle(self,steps=100):
+    def shuffle(self,steps=100):
         for _ in range(0,steps):
-            x,y = State.POSSIBLE_MOVES[random.randint(0,3)]
+            action= random.choice(list(ACTIONS.keys()))
             try:
-                self.Move(x,y)
+                self.move(action)
             except Exception:
                 pass
-    def GetHash(self):
+    def get_hash(self):
         count =int(0)
         sum = int(0)
         for i in self.puzzle_locations.flatten('C'):
             sum += i* math.pow(16,count)
             count +=1
         return int(sum)
-    def GetHeuristic(self):
+    def get_heuristic(self):
         difference_count = 0
         index = 0
         flatten_goal = State().puzzle_locations.flatten('C')
@@ -62,22 +78,24 @@ class State():
                 difference_count+=1
             index+=1
         return difference_count
-    def IsFailed(self):
+    def is_failed(self):
         return False
+    
     def __str__(self):
         return (self.puzzle_locations.__str__())
 
 
 class Node:
-     def __init__(self,parent,value,depth:int):
+     def __init__(self,parent,state,depth:int,score:float):
          self.parent = parent
-         self.value = value
-         self.depth=depth
+         self.state = state
+         self.depth = depth
+         self.score = score
      #This is needed for heap queue
      def __lt__(self, other):
-         return False
+         return self.score < other.score
      def __le__(self, other):
-         return False
+         return self.score < other.score
 
 class SearchMode(Enum):
      IDS =0
@@ -100,73 +118,62 @@ class SearchAgent:
             self.f_limit = [sys.maxsize]
             self.alternative_node = [None]
     
-    def get_evaluate_value(self,node):
+    def get_evaluate_value(self,state,depth):
         #use a smaller number so it works like stack
         if(self.mode == SearchMode.IDS):
             if (len (self.frontiers)==0):
+                self.stack_count=0
                 return 0
             else:
-                return min(self.frontiers)[0]-1
+                self.stack_count-=1
+                return self.stack_count 
+                #return min(self.frontiers).score-1
         #f(x) = g(x)
         elif (self.mode == SearchMode.UCS):
-            return node.depth
+            return depth
         #f(x) = h(x)    
         elif (self.mode == SearchMode.Greedy_BFS):
-            return node.value.GetHeuristic()
-        #f(x) = g(x) + h(x)      
+            return state.get_heuristic()
+        #f(x) = g(x) + h(x)   
         elif (self.mode == SearchMode.A_Star):
-            return node.depth+node.value.GetHeuristic()
+            return depth+state.get_heuristic()
         elif (self.mode == SearchMode.RBFS):
-            return node.depth+node.value.GetHeuristic()  
+            return depth+state.get_heuristic()  
         return 0
 
     def process_node(self,node:Node):
-        state = node.value
-        hash = state.GetHash()
+        state = node.state
+        hash = state.get_hash()
         if (self.goal_check_function(state)):
             return node
         if (hash in self.explored.keys()):
             return None
-        if (state.IsFailed()):
+        if (state.is_failed()):
             return None
         self.explored[hash] = node
         if(self.mode == SearchMode.RBFS):
-            print ("RBFS")
-            neighbors = state.GetNeighbors()
-            child_nodes =[]
-            for n in neighbors:
-                child_node = Node(node,n,node.depth+1)
-                evaluate_value = self.get_evaluate_value(child_node)
-                child_nodes.append((evaluate_value,child_node))
-            child_nodes.sort()
-
-            #get highest
-            next_node = child_nodes[0][1]
-            alternative_node = child_nodes[1][1]
-            print(self.get_evaluate_value(next_node))
-            print(next_node.value)
-            print(self.get_evaluate_value(alternative_node))
-            print(alternative_node.value)            
+            print ("RBFS")          
             return None
 
         #For Iterative-Deepening Search, stop adding frontier if the depth reach cut off depth
         if(self.mode == SearchMode.IDS and node.depth >= self.cut_off_depth):
             return None
-        neighbors = state.GetNeighbors()
+        neighbors = state.get_neighbors()
         for neighbor in neighbors:
-            new_node = Node(node,neighbor,node.depth+1)
+            score = self.get_evaluate_value(neighbor,node.depth+1)
+            new_node = Node(node,neighbor,node.depth+1,score)
             self.add_frontier(new_node)
         return None
 
     def add_frontier(self,node):
-        evaluate_value = self.get_evaluate_value(node)
-        heappush(self.frontiers,(evaluate_value,node))
+        heappush(self.frontiers,node)
         self.max_queue_size = max(len(self.frontiers),self.max_queue_size)
+
     def get_next_frontier(self) -> Node:
-        return heappop(self.frontiers)[1]
+        return heappop(self.frontiers)
 
     def search(self):
-        root_node = Node(None,self.start_state,0)
+        root_node = Node(None,self.start_state,0,float("inf"))
         self.add_frontier(root_node)
         while (len(self.frontiers)>0):
             node = self.get_next_frontier()
@@ -174,28 +181,31 @@ class SearchAgent:
             if (result != None):
                 print (f"Mode: {self.mode} Solution found!, Max queue size: {self.max_queue_size} Max depth: {node.depth}")
                 return result
+        #For IDS, recursiely call a new IDS search agent with cut_off_depth+1
         if(self.mode == SearchMode.IDS):
             new_cut_off_depth = self.cut_off_depth+1
+            max_queue_size = self.max_queue_size
             #reset the search agent
-            self = SearchAgent(self.start_state,self.goal_check_function,self.mode)
-            self.cut_off_depth = new_cut_off_depth
-            return self.search()
-        print ("Fail!")
+            new_agent = SearchAgent(self.start_state,self.goal_check_function,self.mode)
+            new_agent.max_queue_size = max_queue_size
+            new_agent.cut_off_depth = new_cut_off_depth
+            return new_agent.search()
+        print (f"{self.mode} Failed!, Max queue size: {self.max_queue_size} Max depth: {node.depth}")
         return None
 
 
 goal_state = State()
 start_state =  State()
-start_state.Shuffle(steps = 20)
+start_state.shuffle(steps = 20)
 print('Goal State')
 print(goal_state)
 print('Start State')
 print(start_state)
 
 
-agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.RBFS)
-solution_node = agent.search()
-exit(0)
+#agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.RBFS)
+#solution_node = agent.search()
+#exit(0)
 
 agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.Greedy_BFS)
 solution_node = agent.search()
@@ -207,5 +217,4 @@ agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.UCS)
 solution_node = agent.search()
 
 agent = SearchAgent(start_state,lambda s:s== goal_state,SearchMode.IDS)
-solution_node = agent.search()
-
+solution_node = agent.search()    
