@@ -16,9 +16,9 @@ ACTIONS={
 class State():
 
     def __init__ (self):
-        self.size =4
-        self.puzzle_locations = np.array([[1,2,3,4],[12,13,14,5],[11,0,15,6],[10,9,8,7]])
-        #self.puzzle_locations = np.array([[1,2,3],[4,5,6],[7,8,0]])
+        self.size =3
+        #self.puzzle_locations = np.array([[1,2,3,4],[12,13,14,5],[11,0,15,6],[10,9,8,7]])
+        self.puzzle_locations = np.array([[1,2,3],[4,5,6],[7,8,0]])
     def __eq__(self, other):
             return np.array_equal(self.puzzle_locations,other.puzzle_locations)
     def blank_location(self):
@@ -64,7 +64,7 @@ class State():
         count =int(0)
         sum = int(0)
         for i in self.puzzle_locations.flatten('C'):
-            sum += i* math.pow(16,count)
+            sum += i* (self.size**2)**count
             count +=1
         return int(sum)
     def get_heuristic(self):
@@ -156,7 +156,7 @@ class SearchAgent:
             return None
 
         #For Iterative-Deepening Search, stop adding frontier if the depth reach cut off depth
-        if(self.mode == SearchMode.IDS and node.depth >= self.cut_off_depth):
+        if(self.mode == SearchMode.IDS and node.depth > self.cut_off_depth):
             return None
         neighbors = state.get_neighbors()
         for neighbor in neighbors:
@@ -196,7 +196,7 @@ class SearchAgent:
 
 goal_state = State()
 start_state =  State()
-start_state.shuffle(steps = 20)
+start_state.shuffle(steps = 10)
 print('Goal State')
 print(goal_state)
 print('Start State')
