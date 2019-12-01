@@ -1,16 +1,15 @@
 import sys
 from enum import Enum
-import copy
 from heapq import heappush, heappop
 
 class Node:
-    def __init__(self, parent, action, state, depth: int, score: float = float("inf")):
+    def __init__(self, parent, action, state, depth: int, score: float = float("inf"), cost: float = float("inf")):
         self.parent = parent
         self.action = action
         self.state = state
         self.depth = depth
         self.score = score
-
+        self.cost = cost
     def get_neighbors(self):
         neighbors=[]
         return neighbors
@@ -39,6 +38,7 @@ class SearchAgent:
         self.max_queue_size = len(self.frontiers)
         if(self.mode == SearchMode.IDS):
             self.cut_off_depth = 1
+            self.cut_off_depth_reached = False
         if(self.mode == SearchMode.RBFS):
             self.f_limit = [sys.maxsize]
             self.alternative_node = [None]
@@ -54,15 +54,15 @@ class SearchAgent:
                 return self.stack_count
         # f(x) = g(x)
         elif (self.mode == SearchMode.UCS):
-            return self.problem.cost(node)
+            return node.cost
         # f(x) = h(x)
         elif (self.mode == SearchMode.Greedy_BFS):
-            return self.problem.heuristic(node.state)
+            return node.heuristic
         # f(x) = g(x) + h(x)
         elif (self.mode == SearchMode.A_Star):
-            return self.problem.cost(node)+self.problem.heuristic(node.state)
+            return node.cost+node.heuristic
         elif (self.mode == SearchMode.RBFS):
-            return self.problem.cost(node)+self.problem.heuristic(node.state)
+            return node.cost+node.heuristic
         return 0
 
     def process_node(self, node: Node):
@@ -80,17 +80,23 @@ class SearchAgent:
             return None
 
         # For Iterative-Deepening Search, stop adding frontier if the depth reach cut off depth
-        if(self.mode == SearchMode.IDS and node.depth > self.cut_off_depth):
+        if(self.mode == SearchMode.IDS and node.depth >= self.cut_off_depth):
             # create a new search agent with larger cut off depth
-            new_agent = copy.deepcopy(self)
-            new_agent.max_queue_size = self.max_queue_size
-            new_agent.cut_off_depth = self.cut_off_depth+1
-            return new_agent.search()
+            self.cut_off_depth_reached=True
+            return None
+        new_nodes =[]
         for successor in self.problem.get_successors(node.state):
             action,state = successor
             new_node = Node(node,action,state,node.depth+1)
+            new_node.cost = self.problem.cost(node)
+            new_node.heuristic = self.problem.heuristic(node.state)
             new_node.score = self.get_evaluate_value(new_node)
-            self.add_frontier(new_node)
+            new_nodes.append(new_node)
+        if(self.mode == SearchMode.RBFS):
+            pass
+        else:
+            for new_node in new_nodes:
+                self.add_frontier(new_node)
         return None
 
     def add_frontier(self, node):
@@ -101,15 +107,30 @@ class SearchAgent:
         return heappop(self.frontiers)
 
     def search(self):
-        root_node = Node(None, None, self.start_state, 0)
+        root_node = Node(None, None, self.start_state,0,cost=0)
         self.add_frontier(root_node)
         while (len(self.frontiers) > 0):
-            node = self.get_next_frontier()
-            result = self.process_node(node)
-            if (result != None):
+            frontier_node = self.get_next_frontier()
+            solution_node = self.process_node(frontier_node)
+            if (solution_node != None):
                 print(
-                    f"Mode: {self.mode} Solution found!, Max queue size: {self.max_queue_size} Max depth: {node.depth}")
-                return result
+                    f"Mode: {self.mode} Solution found!, Max queue size: {self.max_queue_size} Max depth: {solution_node.depth}")
+                actions =[]
+                node = solution_node
+                while (node!=None):
+                    actions.append(node.action)
+                    node = node.parent
+                actions.reverse()
+                #Skip root action
+                actions = actions[1:]
+                print (actions)
+                return solution_node
+        if(self.mode == SearchMode.IDS and self.cut_off_depth_reached):
+        #create a new search agent with larger cut off depth
+            new_agent = SearchAgent(self.start_state,self.problem,self.mode)
+            new_agent.max_queue_size = self.max_queue_size
+            new_agent.cut_off_depth = self.cut_off_depth+1
+            return new_agent.search()
         print(
-            f"{self.mode} Failed!, Max queue size: {self.max_queue_size} Max depth: {node.depth}")
+            f"{self.mode} Failed!, Max queue size: {self.max_queue_size}")
         return None
