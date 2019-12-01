@@ -40,8 +40,8 @@ class SearchAgent:
             self.cut_off_depth = 1
             self.cut_off_depth_reached = False
         if(self.mode == SearchMode.RBFS):
-            self.f_limit = [sys.maxsize]
-            self.alternative_node = [None]
+            self.f_limits = []
+            self.alternative_nodes = []
 
     def get_evaluate_value(self, node):
         # return a smaller number so it works like stack
@@ -75,9 +75,6 @@ class SearchAgent:
         if (self.problem.test_fail(node)):
             return None
         self.explored[hash] = node
-        if(self.mode == SearchMode.RBFS):
-            print("RBFS")
-            return None
 
         # For Iterative-Deepening Search, stop adding frontier if the depth reach cut off depth
         if(self.mode == SearchMode.IDS and node.depth >= self.cut_off_depth):
@@ -88,15 +85,12 @@ class SearchAgent:
         for successor in self.problem.get_successors(node.state):
             action,state = successor
             new_node = Node(node,action,state,node.depth+1)
-            new_node.cost = self.problem.cost(node)
-            new_node.heuristic = self.problem.heuristic(node.state)
+            new_node.cost = self.problem.cost(new_node)
+            new_node.heuristic = self.problem.heuristic(new_node.state)
             new_node.score = self.get_evaluate_value(new_node)
             new_nodes.append(new_node)
-        if(self.mode == SearchMode.RBFS):
-            pass
-        else:
-            for new_node in new_nodes:
-                self.add_frontier(new_node)
+        for new_node in new_nodes:
+            self.add_frontier(new_node)
         return None
 
     def add_frontier(self, node):
@@ -105,32 +99,44 @@ class SearchAgent:
 
     def get_next_frontier(self) -> Node:
         return heappop(self.frontiers)
+    def process_rbfs(self):
+        if (self.problem.test_goal(self.best_node.state)):
+            return self.best_node
+        return None
 
     def search(self):
         root_node = Node(None, None, self.start_state,0,cost=0)
-        self.add_frontier(root_node)
-        while (len(self.frontiers) > 0):
-            frontier_node = self.get_next_frontier()
-            solution_node = self.process_node(frontier_node)
+        if(self.mode == SearchMode.RBFS):
+            self.best_node = root_node
+            self.f_limits.append(float('Inf'))
+            self.alternative_nodes.append(None)
+            solution_node = self.process_rbfs()
             if (solution_node != None):
-                print(
-                    f"Mode: {self.mode} Solution found!, Max queue size: {self.max_queue_size} Max depth: {solution_node.depth}")
-                actions =[]
-                node = solution_node
-                while (node!=None):
-                    actions.append(node.action)
-                    node = node.parent
-                actions.reverse()
-                #Skip root action
-                actions = actions[1:]
-                print (actions)
+                print(f"Mode: {self.mode} Solution found!, Max queue size: {self.max_queue_size} Max depth: {solution_node.depth}")
                 return solution_node
+        else:
+            self.add_frontier(root_node)
+            while (len(self.frontiers) > 0):
+                frontier_node = self.get_next_frontier()
+                solution_node = self.process_node(frontier_node)
+                if (solution_node != None):
+                    print(
+                        f"Mode: {self.mode} Solution found!, Max queue size: {self.max_queue_size} Max depth: {solution_node.depth}")
+                    actions =[]
+                    node = solution_node
+                    while (node!=None):
+                        actions.append(node.action)
+                        node = node.parent
+                    actions.reverse()
+                    #Skip root action                           
+                    actions = actions[1:]
+                    print (actions)
+                    return solution_node
         if(self.mode == SearchMode.IDS and self.cut_off_depth_reached):
         #create a new search agent with larger cut off depth
             new_agent = SearchAgent(self.start_state,self.problem,self.mode)
             new_agent.max_queue_size = self.max_queue_size
             new_agent.cut_off_depth = self.cut_off_depth+1
             return new_agent.search()
-        print(
-            f"{self.mode} Failed!, Max queue size: {self.max_queue_size}")
+        print(f"{self.mode} Failed!, Max queue size: {self.max_queue_size}")
         return None
