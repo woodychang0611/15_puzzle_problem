@@ -1,2 +1,2 @@
-# 15_puzzle_problem
-15 puzzle problem
+# puzzle_problem
+puzzle problem
