@@ -41,9 +41,9 @@ class PuzzleState:
 class PuzzleProblem:
     ACTIONS = {
         'Up': (0, -1),
-        'Down': (0, 1),
+        'Right': (1, 0),
         'Left': (-1, 0),
-        'Right': (1, 0)
+        'Down': (0, 1),
     }
     def __init__ (self,goal_state):
         self.goal_state = goal_state

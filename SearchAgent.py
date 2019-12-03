@@ -13,16 +13,12 @@ class Node:
     def get_neighbors(self):
         neighbors=[]
         return neighbors
-     # This is needed for heap queue
-
+    # This is needed for heap queue
     def __lt__(self, other):
         if(self.score == other.score):
             return self.action < other.action
         else:
             return self.score < other.score
-
-    def __le__(self, other):
-        return self.score <= other.score
 
 class SearchMode(Enum):
     IDS = 0
@@ -101,7 +97,7 @@ class SearchAgent:
         return heappop(self.frontiers)
     def process_rbfs(self,node,f_limit):
         if (self.problem.test_goal(node.state)):
-            return node,-1
+            return node,node.score
         new_nodes=[]
         for successor in self.problem.get_successors(node.state):
             action,state = successor
@@ -109,28 +105,29 @@ class SearchAgent:
             new_node.cost = self.problem.cost(new_node)
             new_node.heuristic = self.problem.heuristic(new_node.state)
             new_node.score = self.get_evaluate_value(new_node)
-            new_node.f = max(new_node.score,node.f)
+            new_node.score = max(new_node.score,node.score)
             new_nodes.append(new_node)
         if (len(new_nodes)==0):
             return None,float('inf')
         while (1):
-            new_nodes.sort(key=lambda n:n.f)
+            new_nodes.sort(key=lambda n:n.score)
             best = new_nodes[0]
-            if(best.f > f_limit):
-                return None,best.f
+            if(best.score > f_limit):
+                return None,best.score
             if (len(new_nodes)>=2):
-                alternative = new_nodes[1].f
+                alternative = new_nodes[1].score
             else:    
                 alternative = float('inf')
-            result,best.f = self.process_rbfs(best,min(f_limit,alternative))
+            result,best.score = self.process_rbfs(best,min(f_limit,alternative))
             if(result!=None):
                 return result,-1
         return None,float('inf')
 
     def search(self):
         root_node = Node(None, None, self.start_state,0,cost=0)
+        root_node.heuristic = self.problem.heuristic(root_node.state)
+        root_node.score = self.get_evaluate_value(root_node)
         if(self.mode == SearchMode.RBFS):
-            root_node.f = 0
             solution_node,_ = self.process_rbfs(root_node,float('inf'))
         else:
             self.add_frontier(root_node)
