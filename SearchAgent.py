@@ -16,7 +16,10 @@ class Node:
      # This is needed for heap queue
 
     def __lt__(self, other):
-        return self.score < other.score
+        if(self.score == other.score):
+            return self.action < other.action
+        else:
+            return self.score < other.score
 
     def __le__(self, other):
         return self.score <= other.score
@@ -110,7 +113,7 @@ class SearchAgent:
             new_nodes.append(new_node)
         if (len(new_nodes)==0):
             return None,float('inf')
-        while (len(new_nodes)>0):
+        while (1):
             new_nodes.sort(key=lambda n:n.f)
             best = new_nodes[0]
             if(best.f > f_limit):
