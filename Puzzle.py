@@ -41,9 +41,9 @@ class PuzzleState:
 class PuzzleProblem:
     ACTIONS = {
         'Up': (0, -1),
-        'Right': (1, 0),
-        'Left': (-1, 0),
         'Down': (0, 1),
+        'Left': (-1, 0),
+        'Right': (1, 0),
     }
     def __init__ (self,goal_state):
         self.goal_state = goal_state
@@ -63,17 +63,6 @@ class PuzzleProblem:
             sum+=abs(x_goal-x_state)+(y_goal-y_state)
         return sum
 
-    def heuristic2(self,state):
-        difference_count = 0
-        index = 0
-        flatten_goal = self.goal_state.puzzle_locations.flatten('C')
-        for n in state.puzzle_locations.flatten('C'):
-            if (n == flatten_goal[index]):
-                n = n+1
-            else:
-                difference_count += 1
-            index += 1
-        return difference_count
     def test_fail(self,state): 
         return False
     def get_successors(self,state):

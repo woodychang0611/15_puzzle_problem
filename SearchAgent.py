@@ -34,7 +34,8 @@ class SearchAgent:
         self.explored = {}
         self.frontiers = []
         self.mode = mode
-        self.max_queue_size = len(self.frontiers)
+        self.max_queue_size =0
+        self.max_queue_size = max(self.max_queue_size,len(self.frontiers))
         if(self.mode == SearchMode.IDS):
             self.cut_off_depth = 1
             self.cut_off_depth_reached = False
@@ -96,8 +97,9 @@ class SearchAgent:
     def get_next_frontier(self) -> Node:
         return heappop(self.frontiers)
     def process_rbfs(self,node,f_limit):
+        max_queue_size=0
         if (self.problem.test_goal(node.state)):
-            return node,node.score
+            return node,node.score,max_queue_size
         new_nodes=[]
         for successor in self.problem.get_successors(node.state):
             action,state = successor
@@ -108,27 +110,28 @@ class SearchAgent:
             new_node.score = max(new_node.score,node.score)
             new_nodes.append(new_node)
         if (len(new_nodes)==0):
-            return None,float('inf')
+            return None,float('inf'),0
         while (1):
             new_nodes.sort(key=lambda n:n.score)
             best = new_nodes[0]
             if(best.score > f_limit):
-                return None,best.score
+                return None,best.score,0
             if (len(new_nodes)>=2):
                 alternative = new_nodes[1].score
             else:    
                 alternative = float('inf')
-            result,best.score = self.process_rbfs(best,min(f_limit,alternative))
+            result,best.score,new_queue_size = self.process_rbfs(best,min(f_limit,alternative))
+            max_queue_size=new_queue_size+len(new_nodes)
             if(result!=None):
-                return result,-1
-        return None,float('inf')
+                return result,result.score,max_queue_size
+        return None,float('inf'),max_queue_size
 
     def search(self):
         root_node = Node(None, None, self.start_state,0,cost=0)
         root_node.heuristic = self.problem.heuristic(root_node.state)
         root_node.score = self.get_evaluate_value(root_node)
         if(self.mode == SearchMode.RBFS):
-            solution_node,_ = self.process_rbfs(root_node,float('inf'))
+            solution_node,_,self.max_queue_size = self.process_rbfs(root_node,float('inf'))
         else:
             self.add_frontier(root_node)
             while (len(self.frontiers) > 0):

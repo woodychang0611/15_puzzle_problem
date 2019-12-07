@@ -7,17 +7,14 @@ from  Puzzle import PuzzleProblem,PuzzleState
 goal_locations = np.array([[1,2,3],[4,5,6],[7,8,0]])
 
 goal_state = PuzzleState(goal_locations)
-start_state = PuzzleProblem.shuffle(goal_state,10)
-
+start_state = PuzzleProblem.shuffle(goal_state,100)
 
 problem = PuzzleProblem(goal_state)
-
 
 print('Goal State')
 print(goal_state)
 print('Start State')
 print(start_state)
-
 
 agent = SearchAgent(start_state, problem, SearchMode.UCS)
 solution_node = agent.search()
