@@ -39,16 +39,13 @@ class SearchAgent:
         if(self.mode == SearchMode.IDS):
             self.cut_off_depth = 1
             self.cut_off_depth_reached = False
-
+        self.max_depth =0
+        self.stack_count=0
     def get_evaluate_value(self, node):
         # return a smaller number so it works like stack
         if(self.mode == SearchMode.IDS):
-            if (len(self.frontiers) == 0):
-                self.stack_count = 0
-                return 0
-            else:
-                self.stack_count -= 1
-                return self.stack_count
+            self.stack_count -= 1
+            return self.stack_count
         # f(x) = g(x)
         elif (self.mode == SearchMode.UCS):
             return node.cost
@@ -72,7 +69,10 @@ class SearchAgent:
         if (self.problem.test_fail(node)):
             return None
         self.explored[hash] = node
-
+        temp = max (self.max_depth,node.depth)
+        if (temp > self.max_depth):
+            self.max_depth=temp
+            #print(f'depth:{temp}')
         # For Iterative-Deepening Search, stop adding frontier if the depth reach cut off depth
         if(self.mode == SearchMode.IDS and node.depth >= self.cut_off_depth):
             # create a new search agent with larger cut off depth
